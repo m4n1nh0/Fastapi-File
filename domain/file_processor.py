@@ -30,20 +30,35 @@ class FileProcessor:
         """
         if file.filename.endswith('.csv'):
             try:
-                csv_reader = csv.DictReader(file.file)
+                # Decodifica o arquivo para string
+                contents = await file.read()
+                decoded_file = contents.decode('utf-8').splitlines()
+
+                # Cria o CSV reader a partir do conteúdo decodificado
+                csv_reader = csv.DictReader(decoded_file)
+
                 for row in csv_reader:
-                    data = {"conta": row[0],
-                            "agencia": row[1],
-                            "texto": row[2],
-                            "valor": float(row[3])
-                            }
+                    data = {
+                        "conta": row['conta'],  # Usa o nome correto da coluna no CSV
+                        "agencia": row['agencia'],
+                        "texto": row['texto'],
+                        "valor": float(row['valor'])
+                    }
                     print(data)
+
                 return {"mensagem": f"Arquivo {file.filename} processado com sucesso"}
+            except KeyError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Erro: coluna {str(e)} não encontrada no CSV"
+                )
             except Exception as e:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                    detail=f"Falha ao processar a arquivo CSV: {str(e)}")
-
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Falha ao processar o arquivo CSV: {str(e)}"
+                )
         else:
-            raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,
-                                detail="Apenas arquivo CSV")
-
+            raise HTTPException(
+                status_code=status.HTTP_406_NOT_ACCEPTABLE,
+                detail="Apenas arquivos CSV são aceitos"
+            )
