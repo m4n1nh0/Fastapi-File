@@ -38,15 +38,10 @@ class FileProcessor:
                 csv_reader = csv.DictReader(decoded_file)
 
                 for row in csv_reader:
-                    data = {
-                        "conta": row['conta'],  # Usa o nome correto da coluna no CSV
-                        "agencia": row['agencia'],
-                        "texto": row['texto'],
-                        "valor": float(row['valor'])
-                    }
-                    print(data)
+                    print(row)
 
-                return {"mensagem": f"Arquivo {file.filename} processado com sucesso"}
+                return {"mensagem": f"Arquivo {file.filename} processado com sucesso",
+                        "data_read": decoded_file}
             except KeyError as e:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -62,3 +57,20 @@ class FileProcessor:
                 status_code=status.HTTP_406_NOT_ACCEPTABLE,
                 detail="Apenas arquivos CSV são aceitos"
             )
+
+    async def add_data_to_file(self, data: dict):
+        """
+        Add data to file created
+        :param data: account data history
+        :return: error or success message
+        """
+
+        if os.path.exists(self.file_path):
+            with open(self.file_path, mode='a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow([data["conta"], data["agencia"], data["texto"], data["valor"]])
+                return {"mensagem": f"Dados inseridos com sucesso: {data}"}
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail="Arquivo inexistente, por favor acessar"
+                                       " a rota de criar a arquivo.")
