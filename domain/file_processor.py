@@ -11,6 +11,20 @@ class FileProcessor:
         self.file_path = 'data/seu_file.csv'
         self.directory = 'data'
 
+    async def list_data(self):
+        if os.path.exists(self.file_path):
+            lines = []
+            with open(self.file_path, mode='r') as file:
+                csv_reader = csv.reader(file)
+                next(csv_reader)
+                for row in csv_reader:
+                    row_dict = dict(conta=row[0], agencia=row[1], texto=row[2], valor=row[3])
+                    lines.append(row_dict)
+            return {"data": lines}
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail="Arquivo inexistente!")
+
     def create_file(self):
         if not os.path.exists(self.file_path):
             os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
@@ -21,42 +35,6 @@ class FileProcessor:
         else:
             raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,
                                 detail="Arquivo já existe")
-
-    async def upload_file(self, file: UploadFile):
-        """
-        Upload a file to read and print data
-        :param file: uploaded file
-        :return: success or error
-        """
-        if file.filename.endswith('.csv'):
-            try:
-                # Decodifica o arquivo para string
-                contents = await file.read()
-                decoded_file = contents.decode('utf-8').splitlines()
-
-                # Cria o CSV reader a partir do conteúdo decodificado
-                csv_reader = csv.DictReader(decoded_file)
-
-                for row in csv_reader:
-                    print(row)
-
-                return {"mensagem": f"Arquivo {file.filename} processado com sucesso",
-                        "data_read": decoded_file}
-            except KeyError as e:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Erro: coluna {str(e)} não encontrada no CSV"
-                )
-            except Exception as e:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Falha ao processar o arquivo CSV: {str(e)}"
-                )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_406_NOT_ACCEPTABLE,
-                detail="Apenas arquivos CSV são aceitos"
-            )
 
     async def add_data_to_file(self, data: dict):
         """
@@ -74,3 +52,45 @@ class FileProcessor:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Arquivo inexistente, por favor acessar"
                                        " a rota de criar a arquivo.")
+
+    async def delete_data(self, selected_line: int):
+        if os.path.exists(self.file_path):
+            with open(self.file_path, mode='r') as file:
+                lines = file.readlines()
+
+            if selected_line < 1 or selected_line >= len(lines):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                    detail="Linha selecionada invalida.")
+
+            with open(self.file_path, mode='w') as file:
+                for index, line in enumerate(lines):
+                    if index != selected_line:
+                        file.write(line)
+            return {"mensagem": "Linha selecionada deletada."}
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail="Arquivo inexistente.")
+
+    async def upload_file(self, file: UploadFile):
+        """
+        Upload a file to read and print data
+        :param file: uploaded file
+        :return: success or error
+        """
+        if file.filename.endswith('.csv'):
+            try:
+
+                contents = await file.read()
+                decoded_file = contents.decode("utf-8").splitlines()
+
+                csv_reader = csv.DictReader(decoded_file)
+                for row in csv_reader:
+                    print(row)
+                return {"mensagem": f"Arquivo {file.filename} processado com sucesso"}
+            except Exception as e:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                    detail=f"Falha ao processar a arquivo CSV: {str(e)}")
+
+        else:
+            raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,
+                                detail="Apenas arquivo CSV")
