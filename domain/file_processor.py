@@ -3,6 +3,8 @@ import os
 
 from fastapi import HTTPException, status, UploadFile
 
+from services.api_client import APIClient
+
 
 class FileProcessor:
     """ Manager of files and folders processor."""
@@ -10,17 +12,17 @@ class FileProcessor:
     def __init__(self):
         self.file_path = 'data/seu_file.csv'
         self.directory = 'data'
+        self.api_client = APIClient()
 
     async def list_data(self):
         if os.path.exists(self.file_path):
-            lines = []
             with open(self.file_path, mode='r') as file:
                 csv_reader = csv.reader(file)
                 next(csv_reader)
                 for row in csv_reader:
                     row_dict = dict(conta=row[0], agencia=row[1], texto=row[2], valor=row[3])
-                    lines.append(row_dict)
-            return {"data": lines}
+                    self.api_client.send_data(row_dict)
+            return {"detail": "Arquivo processado com sucesso!"}
         else:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Arquivo inexistente!")
@@ -85,7 +87,7 @@ class FileProcessor:
 
                 csv_reader = csv.DictReader(decoded_file)
                 for row in csv_reader:
-                    print(row)
+                    self.api_client.send_data(row)
                 return {"mensagem": f"Arquivo {file.filename} processado com sucesso"}
             except Exception as e:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
